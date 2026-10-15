@@ -27,11 +27,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - name: ICS erzeugen
+      - name: Dateien erzeugen
         run: |
           mvn -q compile org.codehaus.mojo:exec-maven-plugin:3.5.0:java -Dexec.mainClass=Main
           mkdir public
-          mv stundenplan.ics public/
+          mv stundenplan.ics stundenplan.json public/
+          cp web/index.html public/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -7,6 +7,7 @@ public class Main {
                 .sorted(Comparator.comparing(Event::date).thenComparing(Event::start))
                 .toList();
         IcsWriter.write(events, Path.of("stundenplan.ics"));
-        System.out.println(events.size() + " Termine in stundenplan.ics geschrieben");
+        JsonWriter.write(events, Path.of("stundenplan.json"));
+        System.out.println(events.size() + " Termine geschrieben");
     }
 }

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Stundenplan">
+    <title>Stundenplan BWI1</title>
+    <style>
+        :root { --bg:#f5f5f7; --card:#fff; --text:#1d1d1f; --muted:#6e6e73; --accent:#0a66c2; --warn:#d97706; }
+        @media (prefers-color-scheme: dark) {
+            :root { --bg:#000; --card:#1c1c1e; --text:#f5f5f7; --muted:#98989d; --accent:#4da3ff; --warn:#fbbf24; }
+        }
+        * { box-sizing: border-box; }
+        body { margin:0; background:var(--bg); color:var(--text);
+            font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+            padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom); }
+        main { max-width:640px; margin:0 auto; padding-bottom:24px; }
+        header { display:flex; align-items:center; justify-content:space-between; padding:16px 0 8px; gap:8px; }
+        h1 { font-size:18px; margin:0; }
+        nav button { background:var(--card); color:var(--accent); border:0; border-radius:8px;
+            padding:8px 12px; font-size:16px; margin-left:4px; }
+        .day { font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; margin:18px 4px 6px; }
+        .day.today { color:var(--accent); }
+        .card { background:var(--card); border-radius:12px; padding:12px 14px; margin-bottom:8px;
+            border-left:4px solid var(--accent); }
+        .card.changed { border-left-color:var(--warn); }
+        .time { font-size:13px; color:var(--muted); }
+        .title { font-weight:600; margin:2px 0; }
+        .meta { font-size:14px; color:var(--muted); }
+        .badge { display:inline-block; background:var(--warn); color:#000; font-size:12px; font-weight:600;
+            border-radius:6px; padding:1px 6px; margin-top:6px; }
+        .empty, footer { color:var(--muted); font-size:14px; text-align:center; margin-top:20px; }
+    </style>
+</head>
+<body>
+<main>
+    <header>
+        <h1 id="range">Stundenplan</h1>
+        <nav><button id="prev">‹</button><button id="today">Heute</button><button id="next">›</button></nav>
+    </header>
+    <div id="list"></div>
+    <footer id="stand"></footer>
+</main>
+<script>
+    const DAYS = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+    let events = [], weekStart = null;
+
+    const pad = n => String(n).padStart(2, '0');
+    const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+    function monday(d) {
+        const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+        return x;
+    }
+    const fmt = d => `${pad(d.getDate())}.${pad(d.getMonth()+1)}.`;
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+    function render() {
+        document.getElementById('range').textContent =
+            `${fmt(weekStart)} – ${fmt(addDays(weekStart, 5))}${weekStart.getFullYear()}`;
+        const todayIso = iso(new Date());
+        let html = '';
+        for (let i = 0; i < 6; i++) {
+            const day = addDays(weekStart, i);
+            const list = events.filter(e => e.date === iso(day)).sort((a, b) => a.start.localeCompare(b.start));
+            if (!list.length) continue;
+            html += `<div class="day ${iso(day) === todayIso ? 'today' : ''}">${DAYS[day.getDay()]}, ${fmt(day)}</div>`;
+            for (const e of list) {
+                const meta = [e.group, e.lecturer, e.room].filter(Boolean).map(esc).join(' · ');
+                html += `<div class="card ${e.changed ? 'changed' : ''}">
+        <div class="time">${e.start}–${e.end}</div>
+        <div class="title">${esc(e.type)} ${esc(e.title)}</div>
+        <div class="meta">${meta}</div>
+        ${e.changed ? `<span class="badge">${esc(e.note || 'Änderung')}</span>` : ''}
+      </div>`;
+            }
+        }
+        document.getElementById('list').innerHTML = html || '<div class="empty">Keine Termine in dieser Woche.</div>';
+    }
+
+    function jumpToday() {
+        const t = iso(new Date());
+        const next = events.find(e => e.date >= t);
+        const ref = next ? new Date(next.date + 'T12:00:00')
+            : (events.length ? new Date(events[events.length - 1].date + 'T12:00:00') : new Date());
+        const cur = monday(new Date());
+        weekStart = events.some(e => e.date >= iso(cur) && e.date <= iso(addDays(cur, 5))) ? cur : monday(ref);
+        render();
+    }
+
+    document.getElementById('prev').onclick = () => { weekStart = addDays(weekStart, -7); render(); };
+    document.getElementById('next').onclick = () => { weekStart = addDays(weekStart, 7); render(); };
+    document.getElementById('today').onclick = jumpToday;
+
+    fetch('stundenplan.json', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(d => {
+            events = d.events;
+            document.getElementById('stand').textContent =
+                'Stand: ' + new Date(d.generated).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
+            jumpToday();
+        })
+        .catch(() => { document.getElementById('list').innerHTML = '<div class="empty">Daten konnten nicht geladen werden.</div>'; });
+</script>
+</body>
+</html>
