@@ -32,7 +32,7 @@ jobs:
           mvn -q compile org.codehaus.mojo:exec-maven-plugin:3.5.0:java -Dexec.mainClass=Main
           mkdir public
           mv stundenplan.ics stundenplan.json public/
-          cp web/index.html public/
+          cp web/index.html web/icon.png public/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
