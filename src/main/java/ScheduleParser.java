@@ -30,7 +30,9 @@ public class ScheduleParser {
         }
         return events;
     }
-
+    static String rename(String title) {
+        return title.equals("Reserviert") ? "Code, KI & Karriere" : title;
+    }
     static List<Event> parseWeek(Element table) {
         List<DayRange> days = new ArrayList<>();
         List<Event> result = new ArrayList<>();
@@ -81,7 +83,7 @@ public class ScheduleParser {
         boolean changed = td.attr("style").replace(" ", "").contains("border-color:red");
         return Optional.of(new Event(td.id(), date,
                 LocalTime.parse(tm.group(1), TIME), LocalTime.parse(tm.group(2), TIME),
-                hm.group(1), hm.group(2), group,
+                hm.group(1), rename(hm.group(2)), group,
                 spans.size() > 0 ? spans.get(0) : null,
                 spans.size() > 1 ? spans.get(1) : null,
                 notes.isEmpty() ? null : String.join(" | ", notes),
