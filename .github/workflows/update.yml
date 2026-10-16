@@ -27,12 +27,20 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+          cache: maven
       - name: Dateien erzeugen
         run: |
-          mvn -q compile org.codehaus.mojo:exec-maven-plugin:3.5.0:java -Dexec.mainClass=Main
+          for i in 1 2 3; do
+            if mvn -q -B compile org.codehaus.mojo:exec-maven-plugin:3.5.0:java -Dexec.mainClass=Main; then
+              break
+            fi
+            if [ "$i" -eq 3 ]; then exit 1; fi
+            echo "Versuch $i fehlgeschlagen, neuer Versuch in 20 Sekunden"
+            sleep 20
+          done
           mkdir public
           mv stundenplan.ics stundenplan.json public/
-          cp web/index.html web/icon.png public/
+          cp web/* public/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
