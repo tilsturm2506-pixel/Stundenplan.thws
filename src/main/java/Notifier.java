@@ -47,12 +47,12 @@ public class Notifier {
     public static void run(String prevJson, List<Event> events) {
         String topic = System.getenv("NTFY_TOPIC");
         if (topic == null || topic.isBlank()) return;
-        String ev = System.getenv("EVENT_NAME");
-        boolean test = "workflow_dispatch".equals(ev);
-        if (!"schedule".equals(ev) && !test) return;
+        String trigger = System.getenv("EVENT_NAME");
+        boolean test = "workflow_dispatch".equals(trigger);
+        if (!"schedule".equals(trigger) && !test) return;
         LocalDate today = LocalDate.now(BERLIN);
 
-        if (prevJson != null) {
+        if (prevJson != null && !test) {
             Map<String, Row> old = new LinkedHashMap<>();
             for (Row r : parse(prevJson)) if (r.date().compareTo(today.toString()) >= 0) old.put(r.key(), r);
             List<String> out = new ArrayList<>();
@@ -71,17 +71,20 @@ public class Notifier {
             }
         }
 
-        if (test || ("15 4,5 * * *".equals(System.getenv("SCHEDULE")) && ZonedDateTime.now(BERLIN).getHour() == 6)) {
-            List<Event> td = events.stream().filter(e -> e.date().equals(today)).toList();
-            if (td.isEmpty() && test) send(topic, "Test: Heute keine Termine im Plan.");
-                StringBuilder sb = new StringBuilder("Heute: " + td.size() + " Termine · "
-                        + td.get(0).start() + "–" + td.get(td.size() - 1).end() + " Uhr");
-                for (Event e : td)
-                    sb.append("\n").append(e.start()).append("–").append(e.end()).append(" ")
-                            .append(e.type()).append(" ").append(e.title())
-                            .append(e.room() != null ? " (" + e.room() + ")" : "");
-                send(topic, sb.toString());
+        boolean morning = "15 4,5 * * *".equals(System.getenv("SCHEDULE")) && ZonedDateTime.now(BERLIN).getHour() == 6;
+        if (test || morning) {
+            List<Event> td = events.stream().filter(x -> x.date().equals(today)).toList();
+            if (td.isEmpty()) {
+                if (test) send(topic, "Test: Heute keine Termine im Plan.");
+                return;
             }
+            StringBuilder sb = new StringBuilder("Heute: " + td.size() + " Termine · "
+                    + td.get(0).start() + "–" + td.get(td.size() - 1).end() + " Uhr");
+            for (Event x : td)
+                sb.append("\n").append(x.start()).append("–").append(x.end()).append(" ")
+                        .append(x.type()).append(" ").append(x.title())
+                        .append(x.room() != null ? " (" + x.room() + ")" : "");
+            send(topic, sb.toString());
         }
     }
 
