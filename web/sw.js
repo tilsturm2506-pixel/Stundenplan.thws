@@ -1,4 +1,4 @@
-const C='stundenplan-v3',A=['./','index.html','icon.png','favicon.png'];
+const C='stundenplan-v4',A=['./','index.html','icon.png','favicon.png'];
 const key=r=>{const u=new URL(r.url);u.search='';return u.href};
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(A)).catch(()=>{}));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
