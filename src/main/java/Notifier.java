@@ -47,7 +47,9 @@ public class Notifier {
     public static void run(String prevJson, List<Event> events) {
         String topic = System.getenv("NTFY_TOPIC");
         if (topic == null || topic.isBlank()) return;
-        if (!"schedule".equals(System.getenv("EVENT_NAME"))) return;
+        String ev = System.getenv("EVENT_NAME");
+        boolean test = "workflow_dispatch".equals(ev);
+        if (!"schedule".equals(ev) && !test) return;
         LocalDate today = LocalDate.now(BERLIN);
 
         if (prevJson != null) {
@@ -69,9 +71,9 @@ public class Notifier {
             }
         }
 
-        if ("30 4,5 * * *".equals(System.getenv("SCHEDULE")) && ZonedDateTime.now(BERLIN).getHour() == 6) {
+        if (test || ("15 4,5 * * *".equals(System.getenv("SCHEDULE")) && ZonedDateTime.now(BERLIN).getHour() == 6)) {
             List<Event> td = events.stream().filter(e -> e.date().equals(today)).toList();
-            if (!td.isEmpty()) {
+            if (td.isEmpty() && test) send(topic, "Test: Heute keine Termine im Plan.");
                 StringBuilder sb = new StringBuilder("Heute: " + td.size() + " Termine · "
                         + td.get(0).start() + "–" + td.get(td.size() - 1).end() + " Uhr");
                 for (Event e : td)
