@@ -8,10 +8,8 @@ on:
   push:
     branches: [main]
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+# Standard: keine Rechte. Jeder Job bekommt nur, was er braucht.
+permissions: {}
 
 concurrency:
   group: pages
@@ -20,11 +18,15 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      # Actions sind auf Commit-Hashes festgelegt (Schutz gegen nachträglich veränderte Tags)
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: '25'
@@ -44,10 +46,23 @@ jobs:
             sleep 20
           done
           mkdir public
-          mv stundenplan.ics stundenplan.json public/
           cp web/* public/
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+          mv stundenplan.ics stundenplan.json public/
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: public
-      - uses: actions/deploy-pages@v4
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
